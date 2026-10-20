@@ -69,46 +69,67 @@ const existing = new Set(sh(`git ls-files ${FOLDER}`).split("\n").filter(Boolean
 mkdirSync(FOLDER, { recursive: true });
 
 let added = 0;
+const errors = [];
 for (const q of solved) {
     const stem = `${q.frontendId ? q.frontendId + "." : ""}${q.titleSlug}`;
     if ([...existing].some((f) => f.startsWith(stem + "."))) continue;
 
-    // 取该题最早的通过记录作为 commit 时间
-    const subs = await lc.problem_submissions({ slug: q.titleSlug, limit: 1000 });
-    const ac = subs
-        .filter((s) => s.statusDisplay === "Accepted")
-        .sort((a, b) => a.timestamp - b.timestamp)[0];
-    if (!ac) {
-        console.log("no AC submission found:", stem);
-        continue;
+    try {
+        // 取该题最早的通过记录作为 commit 时间
+        const subs = await lc.problem_submissions({ slug: q.titleSlug, limit: 1000 });
+        const ac = subs
+            .filter((s) => s.statusDisplay === "Accepted")
+            .sort((a, b) => a.timestamp - b.timestamp)[0];
+        if (!ac) {
+            console.log("no AC submission found:", stem);
+            errors.push({ stem, stage: "submissions", note: "no AC in list", count: subs.length });
+            continue;
+        }
+
+        const detail = await lc.submissionDetail(String(ac.id));
+        const code = detail?.code ?? "";
+        if (!code.trim()) {
+            console.log("empty code, skip:", stem);
+            errors.push({ stem, stage: "detail", note: "empty code" });
+            continue;
+        }
+        const lang = (detail?.lang || ac.lang || "txt").toLowerCase();
+        const ext = EXT[lang] || lang || "txt";
+
+        const file = path.join(FOLDER, `${stem}.${ext}`);
+        writeFileSync(file, code.endsWith("\n") ? code : code + "\n");
+
+        const date = new Date(ac.timestamp).toISOString();
+        const msg = `solve ${stem} (${(q.difficulty || "?").toLowerCase()}, ${lang})`;
+        sh(`git add ${JSON.stringify(file)}`);
+        sh(`git commit -m ${JSON.stringify(msg)}`, {
+            GIT_AUTHOR_NAME: GIT_NAME,
+            GIT_AUTHOR_EMAIL: GIT_EMAIL,
+            GIT_AUTHOR_DATE: date,
+            GIT_COMMITTER_NAME: GIT_NAME,
+            GIT_COMMITTER_EMAIL: GIT_EMAIL,
+            GIT_COMMITTER_DATE: date,
+        });
+        existing.add(file);
+        added++;
+        console.log("+", file, date);
+    } catch (e) {
+        console.error("ERROR on", stem, ":", String(e).slice(0, 300));
+        errors.push({ stem, stage: "exception", note: String(e).slice(0, 300) });
+        if (errors.length >= 5) {
+            console.error("too many errors, aborting loop early");
+            break;
+        }
     }
-
-    const detail = await lc.submissionDetail(String(ac.id));
-    const code = detail?.code ?? "";
-    if (!code.trim()) {
-        console.log("empty code, skip:", stem);
-        continue;
-    }
-    const lang = (detail?.lang || ac.lang || "txt").toLowerCase();
-    const ext = EXT[lang] || lang || "txt";
-
-    const file = path.join(FOLDER, `${stem}.${ext}`);
-    writeFileSync(file, code.endsWith("\n") ? code : code + "\n");
-
-    const date = new Date(ac.timestamp).toISOString();
-    const msg = `solve ${stem} (${(q.difficulty || "?").toLowerCase()}, ${lang})`;
-    sh(`git add ${JSON.stringify(file)}`);
-    sh(`git commit -m ${JSON.stringify(msg)}`, {
-        GIT_AUTHOR_NAME: GIT_NAME,
-        GIT_AUTHOR_EMAIL: GIT_EMAIL,
-        GIT_AUTHOR_DATE: date,
-        GIT_COMMITTER_NAME: GIT_NAME,
-        GIT_COMMITTER_EMAIL: GIT_EMAIL,
-        GIT_COMMITTER_DATE: date,
-    });
-    existing.add(file);
-    added++;
-    console.log("+", file, date);
 }
 
-console.log(`done: committed ${added} new solution(s)`);
+console.log(`done: committed ${added} new solution(s), errors: ${errors.length}`);
+if (errors.length) {
+    writeFileSync("debug.json", JSON.stringify({ solvedTotal: solved.length, added, errors }, null, 2));
+    sh(`git add debug.json && git commit -m "debug: sync errors"`, {
+        GIT_AUTHOR_NAME: GIT_NAME,
+        GIT_AUTHOR_EMAIL: GIT_EMAIL,
+        GIT_COMMITTER_NAME: GIT_NAME,
+        GIT_COMMITTER_EMAIL: GIT_EMAIL,
+    });
+}
