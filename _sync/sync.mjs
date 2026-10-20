@@ -70,8 +70,13 @@ for (;;) {
 }
 console.log("total solved:", solved.length);
 
-// 幂等：已存在的题目跳过
-const existing = new Set(sh(`git ls-files ${FOLDER}`).split("\n").filter(Boolean));
+// 幂等：已存在的题目跳过（ls-files 返回带目录的路径，取文件名部分）
+const existing = new Set(
+    sh(`git ls-files ${FOLDER}`)
+        .split("\n")
+        .filter(Boolean)
+        .map((f) => f.split("/").pop()),
+);
 mkdirSync(FOLDER, { recursive: true });
 
 let added = 0;
@@ -120,8 +125,13 @@ for (const q of solved) {
         added++;
         console.log("+", file, date);
     } catch (e) {
-        console.error("ERROR on", stem, ":", String(e).slice(0, 300));
-        errors.push({ stem, stage: "exception", note: String(e).slice(0, 300) });
+        const note = e.message || String(e);
+        if (note.includes("nothing to commit")) {
+            // 内容已同步过，视为跳过而非错误
+            continue;
+        }
+        console.error("ERROR on", stem, ":", note.slice(0, 300));
+        errors.push({ stem, stage: "exception", note: note.slice(0, 300) });
         if (errors.length >= 5) {
             console.error("too many errors, aborting loop early");
             break;
