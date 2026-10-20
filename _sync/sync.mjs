@@ -48,28 +48,19 @@ if (!st?.isSignedIn) {
 }
 console.log("signed in as:", st.userSlug || st.username || "ok");
 
-// —— 诊断：写出原始响应，便于远程排查 ——
-const probes = {
-    solved: await lc.user_progress_questions({ skip: 0, limit: 5, questionStatus: "SOLVED" }).catch((e) => String(e)),
-    all: await lc.user_progress_questions({ skip: 0, limit: 5 }).catch((e) => String(e)),
-};
-writeFileSync("debug.json", JSON.stringify(probes, null, 2));
-sh(`git add debug.json && git commit -m "debug: userProgressQuestionList probe"`);
-
 // 拉取全部"已解决"题目（分页）
 const solved = [];
 let skip = 0;
 for (;;) {
-    const data = await lc.user_progress_questions({
+    const upl = await lc.user_progress_questions({
         skip,
         limit: 100,
         questionStatus: "SOLVED",
     });
-    const upl = data?.userProgressQuestionList;
     if (!upl) break;
-    solved.push(...upl.questions);
+    solved.push(...(upl.questions || []));
     skip += 100;
-    if (!upl.questions.length || solved.length >= upl.totalNum) break;
+    if (!(upl.questions || []).length || solved.length >= upl.totalNum) break;
 }
 console.log("total solved:", solved.length);
 
