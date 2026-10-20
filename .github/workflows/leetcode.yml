@@ -21,6 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare git
+        run: |
+          git config user.name "xuzhiyan007"
+          git config user.email "184539247+xuzhiyan007@users.noreply.github.com"
+          git checkout -B main
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"

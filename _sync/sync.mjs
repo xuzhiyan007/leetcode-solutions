@@ -15,8 +15,14 @@ const GIT_NAME = process.env.GIT_NAME || "unknown";
 const GIT_EMAIL = process.env.GIT_EMAIL || "unknown@unknown";
 const FOLDER = "solutions";
 
-const sh = (cmd, env = {}) =>
-    execSync(cmd, { encoding: "utf8", env: { ...process.env, ...env } }).trim();
+const sh = (cmd, env = {}) => {
+    try {
+        return execSync(cmd, { encoding: "utf8", env: { ...process.env, ...env } }).trim();
+    } catch (e) {
+        const stderr = (e.stderr || e.stdout || e.message || "").toString().slice(0, 400);
+        throw new Error(`${cmd} failed: ${stderr}`);
+    }
+};
 
 // 与 leetcode-query 内置的 credential-cn 相同的 csrf 获取逻辑
 async function get_csrf() {
