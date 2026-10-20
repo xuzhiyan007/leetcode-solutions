@@ -7,20 +7,37 @@ on:
     - cron: "0 18 * * *" # UTC 每天一次（北京时间次日凌晨 2 点）
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency:
+  group: leetcode-sync
+  cancel-in-progress: true
+
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      # commit 作者指向本人账号，贡献格子才会点亮
-      - name: Set git identity
-        run: |
-          git config --global user.name "xuzhiyan007"
-          git config --global user.email "184539247+xuzhiyan007@users.noreply.github.com"
-
-      - name: Sync
-        uses: JacobLinCool/leetcode-sync@v2
+      - uses: actions/setup-node@v4
         with:
+          node-version: "20"
+
+      - name: Install leetcode-query
+        run: |
+          mkdir -p _sync
+          cd _sync
+          npm init -y >/dev/null 2>&1
+          npm install leetcode-query@^2.0.1 --no-audit --no-fund --loglevel=error
+
+      - name: Sync submissions
+        env:
           LEETCODE_SESSION: ${{ secrets.LEETCODE_SESSION }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_NAME: xuzhiyan007
+          GIT_EMAIL: 184539247+xuzhiyan007@users.noreply.github.com
+        run: node _sync/sync.mjs
+
+      - name: Push
+        run: git push
