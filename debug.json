@@ -1,0 +1,31 @@
+{
+  "solvedTotal": 47,
+  "added": 0,
+  "errors": [
+    {
+      "stem": "3488.closest-equal-element-queries",
+      "stage": "exception",
+      "note": "Error: Command failed: git commit -m \"solve 3488.closest-equal-element-queries (medium, cpp)\""
+    },
+    {
+      "stem": "2080.range-frequency-queries",
+      "stage": "exception",
+      "note": "Error: Command failed: git commit -m \"solve 2080.range-frequency-queries (medium, cpp)\""
+    },
+    {
+      "stem": "2389.longest-subsequence-with-limited-sum",
+      "stage": "exception",
+      "note": "Error: Command failed: git commit -m \"solve 2389.longest-subsequence-with-limited-sum (easy, cpp)\""
+    },
+    {
+      "stem": "2300.successful-pairs-of-spells-and-potions",
+      "stage": "exception",
+      "note": "Error: Command failed: git commit -m \"solve 2300.successful-pairs-of-spells-and-potions (medium, cpp)\""
+    },
+    {
+      "stem": "1385.find-the-distance-value-between-two-arrays",
+      "stage": "exception",
+      "note": "Error: Command failed: git commit -m \"solve 1385.find-the-distance-value-between-two-arrays (easy, cpp)\""
+    }
+  ]
+}
